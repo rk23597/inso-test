@@ -33,5 +33,5 @@ jobs:
           yq -i '.data.oauth2ClientSecret = "${{ secrets.CLIENTSECRET }}"' ${{ env.ENV_FILE }}
           cat  ${{ env.ENV_FILE }}       
    
-      - name: Run a one-line script
+      - name: Run Inso test 
         run: inso run test "inso-test.git"
