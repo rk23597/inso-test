@@ -34,4 +34,4 @@ jobs:
           cat  ${{ env.ENV_FILE }}       
    
       - name: Run a one-line script
-        run: inso run test "spc_a8b24b"
+        run: inso run test "inso-test.git"
