@@ -1,7 +1,7 @@
 _id: req_287d4c436a5c4b22bc435fb2bfba4645
 type: Request
 parentId: fld_995eb0f1c7444e368e98e5f6a80e4d5e
-modified: 1716307786565
+modified: 1716313713012
 created: 1716304538451
 url: "{{ _.scheme }}://{{ _.host }}/v1/json"
 name: Get Mock JSON Response
@@ -21,14 +21,14 @@ authentication:
   scope: ""
   type: oauth2
   clientSecret: "{{ _.oauth2ClientSecret }}"
-  accessTokenUrl: http://13.200.232.160:8000/oauth/token
-  disabled: true
+  accessTokenUrl: http://18.223.159.249:8000/v1/oauth/token
+  disabled: false
 metaSortKey: -1716295108989
 isPrivate: false
 pathParameters: []
 settingStoreCookies: true
 settingSendCookies: true
-settingDisableRenderRequestBody: false
+settingDisableRenderRequestBody: true
 settingEncodeUrl: true
 settingRebuildPath: true
 settingFollowRedirects: global
