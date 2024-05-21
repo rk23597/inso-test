@@ -1,0 +1,16 @@
+_id: env_512cc3aadb2241fe870ae0bc7ea798f1
+type: Environment
+parentId: env_3d929fe01bea85595d31de3966adc0034fd59087
+modified: 1716295271794
+created: 1716295109031
+name: env_prod
+data:
+  scheme: https
+  base_path: /v1
+  host: api.example.com
+  oauth2ClientId: clientId
+  oauth2ClientSecret: clientSecret
+dataPropertyOrder: null
+color: null
+isPrivate: false
+metaSortKey: 1716295109031

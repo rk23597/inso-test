@@ -1,0 +1,65 @@
+_id: spc_a8b24b7ca17e46289c420703a7811b1e
+type: ApiSpec
+parentId: wrk_d82bb6bfdc9944878e0183b1b1df11e3
+modified: 1716295092485
+created: 1716294429455
+fileName: inso-test.git
+contents: |-
+  openapi: 3.0.0
+  info:
+    title: MockBin API
+    description: "This is mockbin api"
+    contact:
+      email: neosalpha@info.com
+    version: 0.0.1
+  servers:
+    - url: https://13.200.232.160:8443
+    - url: https://api.test.example.com/v1
+    - url: https://api.example.com/v1
+  tags:
+  - name: GetAPI
+    description: Get JSON Data
+  paths:
+    /json:
+      get:
+        tags:
+          - GetAPI
+        summary: Retrieve json data
+        description: Returns a list of user json information.
+        operationId: getJson
+
+        responses:
+          '200':
+            description: Successful response
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                      example: Hello, world!
+          '400':
+            description: Bad request
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    error:
+                      type: string
+                      example: Invalid request              
+        security:
+          - bearerAuth: []
+
+  components:
+    securitySchemes:
+      bearerAuth:
+        type: oauth2
+        flows:
+          clientCredentials:
+            tokenUrl: https://13.200.232.160:8443/oauth/token
+            scopes:
+              freeAPI: default
+              paidAPI: paid subscription
+contentType: yaml

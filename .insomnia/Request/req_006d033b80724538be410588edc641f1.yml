@@ -1,0 +1,37 @@
+_id: req_006d033b80724538be410588edc641f1
+type: Request
+parentId: fld_995eb0f1c7444e368e98e5f6a80e4d5e
+modified: 1716296004962
+created: 1716295109039
+url: "{{ _.scheme }}://{{ _.host }}/oauth/token"
+name: Retrieve Access Token
+description: ""
+method: POST
+body:
+  mimeType: application/json
+  text: |-
+    {
+        "client_id": "{{ _.oauth2ClientId }}",
+        "client_secret": "{{ _.oauth2ClientSecret }}"
+    }
+preRequestScript: ""
+parameters: []
+headers:
+  - name: Content-Type
+    value: application/json
+authentication:
+  clientId: "{{ _.oauth2ClientId }}"
+  grantType: client_credentials
+  scope: ""
+  type: oauth2
+  clientSecret: "{{ _.oauth2ClientSecret }}"
+  accessTokenUrl: https://13.200.232.160:8443/oauth/token
+metaSortKey: -1716295109039
+isPrivate: false
+pathParameters: []
+settingStoreCookies: true
+settingSendCookies: true
+settingDisableRenderRequestBody: false
+settingEncodeUrl: true
+settingRebuildPath: true
+settingFollowRedirects: global

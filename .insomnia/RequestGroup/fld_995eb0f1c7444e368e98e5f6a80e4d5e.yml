@@ -1,0 +1,10 @@
+_id: fld_995eb0f1c7444e368e98e5f6a80e4d5e
+type: RequestGroup
+parentId: wrk_d82bb6bfdc9944878e0183b1b1df11e3
+modified: 1716295109034
+created: 1716295109034
+name: GetAPI
+description: Get JSON Data
+environment: {}
+environmentPropertyOrder: null
+metaSortKey: -1716295109034
