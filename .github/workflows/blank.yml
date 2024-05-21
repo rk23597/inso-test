@@ -1,5 +1,5 @@
 
-name: CI
+name: Inso-test
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
 
       - name: Install Insomnia
         run: |
-          wget https://github.com/Kong/insomnia/releases/download/lib%408.6.1/inso-linux-8.6.1.tar.xz
+          wget https://github.com/Kong/insomnia/releases/download/lib%408.6.1/inso-linux-8.6.1.tar.xz > /dev/null 2>&1
           tar -xf inso-linux-8.6.1.tar.xz 
           sudo cp inso /usr/local/bin/
 
