@@ -20,11 +20,18 @@ jobs:
           tar -xf inso-linux-8.6.1.tar.xz 
           sudo cp inso /usr/local/bin/
 
-      - name: Update the environment variable
+      - name: Get the environment file
         run: | 
           cd ./.insomnia/Environment
           ENV_FILE=$(ls -p | grep -v / )
           echo "ENV_FILE=$ENV_FILE" >> $GITHUB_ENV         
+          
+      - name: Update the Environment file
+        run: |
+          cd ./.insomnia/Environment
+          yq -i '.data.oauth2ClientId = "rMeqiWCGozbPpwGf4q5Rk0gYXBk5k8bW"' ${{ env.ENV_FILE }}
+          yq -i '.data.oauth2ClientSecret = "JfiSEiYxmgGrVU37_gAyWY-2IeM20s8pwr_reHUd1BWlf-INgI6jdekZibAn3khC"' ${{ env.ENV_FILE }}
+          cat  ${{ env.ENV_FILE }}       
    
       - name: Run a one-line script
         run: inso run test "spc_a8b24b"
