@@ -1,0 +1,30 @@
+
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Insomnia
+        run: |
+          wget https://github.com/Kong/insomnia/releases/download/lib%408.6.1/inso-linux-8.6.1.tar.xz
+          tar -xf inso-linux-8.6.1.tar.xz 
+          sudo cp inso /usr/local/bin/
+
+      - name: Update the environment variable
+        run: | 
+          cd ./.insomnia/Environment
+          ENV_FILE=$(ls -p | grep -v / )
+          echo "ENV_FILE=$ENV_FILE" >> $GITHUB_ENV         
+   
+      - name: Run a one-line script
+        run: inso run test "spc_a8b24b"
