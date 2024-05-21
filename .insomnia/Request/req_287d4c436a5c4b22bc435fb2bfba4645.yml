@@ -1,24 +1,21 @@
-_id: req_006d033b80724538be410588edc641f1
+_id: req_287d4c436a5c4b22bc435fb2bfba4645
 type: Request
 parentId: fld_995eb0f1c7444e368e98e5f6a80e4d5e
-modified: 1716306885876
-created: 1716295109039
-url: "{{ _.scheme }}://{{ _.host }}/v1/oauth/token"
-name: Get Access Token
+modified: 1716307181937
+created: 1716304538451
+url: "{{ _.scheme }}://{{ _.host }}/v1/json"
+name: Get Mock JSON Response
 description: ""
 method: POST
-body:
-  mimeType: application/json
-  text: |-
-    {
-        "client_id": "{{ _.oauth2ClientId }}",
-        "client_secret": "{{ _.oauth2ClientSecret }}"
-    }
+body: {}
 preRequestScript: ""
 parameters: []
 headers:
-  - name: Content-Type
-    value: application/json
+  - id: pair_43f0624be41548cca92df91052b20d5c
+    name: Authorization
+    value: Bearer {% response 'body', 'req_006d033b80724538be410588edc641f1',
+      'b64::JC5hY2Nlc3NfdG9rZW4=::46b', 'never', 60 %}
+    description: ""
 authentication:
   clientId: "{{ _.oauth2ClientId }}"
   grantType: client_credentials
@@ -27,7 +24,7 @@ authentication:
   clientSecret: "{{ _.oauth2ClientSecret }}"
   accessTokenUrl: http://13.200.232.160:8000/oauth/token
   disabled: true
-metaSortKey: -1716295109039
+metaSortKey: -1716295108989
 isPrivate: false
 pathParameters: []
 settingStoreCookies: true
