@@ -1,7 +1,7 @@
 _id: req_287d4c436a5c4b22bc435fb2bfba4645
 type: Request
 parentId: fld_995eb0f1c7444e368e98e5f6a80e4d5e
-modified: 1716307181937
+modified: 1716307786565
 created: 1716304538451
 url: "{{ _.scheme }}://{{ _.host }}/v1/json"
 name: Get Mock JSON Response
@@ -13,8 +13,7 @@ parameters: []
 headers:
   - id: pair_43f0624be41548cca92df91052b20d5c
     name: Authorization
-    value: Bearer {% response 'body', 'req_006d033b80724538be410588edc641f1',
-      'b64::JC5hY2Nlc3NfdG9rZW4=::46b', 'never', 60 %}
+    value: "{{ _.access_token }}"
     description: ""
 authentication:
   clientId: "{{ _.oauth2ClientId }}"
