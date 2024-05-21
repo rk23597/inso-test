@@ -29,8 +29,8 @@ jobs:
       - name: Update the Environment file
         run: |
           cd ./.insomnia/Environment
-          yq -i '.data.oauth2ClientId = "rMeqiWCGozbPpwGf4q5Rk0gYXBk5k8bW"' ${{ env.ENV_FILE }}
-          yq -i '.data.oauth2ClientSecret = "JfiSEiYxmgGrVU37_gAyWY-2IeM20s8pwr_reHUd1BWlf-INgI6jdekZibAn3khC"' ${{ env.ENV_FILE }}
+          yq -i '.data.oauth2ClientId = "${{ secrets.CLIENTID }}"' ${{ env.ENV_FILE }}
+          yq -i '.data.oauth2ClientSecret = "${{ secrets.CLIENTSECRET }}"' ${{ env.ENV_FILE }}
           cat  ${{ env.ENV_FILE }}       
    
       - name: Run a one-line script
