@@ -1,0 +1,944 @@
+_format_version: "3.0"
+_konnect:
+  control_plane_name: integration-dev-cp
+consumers:
+- acls:
+  - group: UoS-group
+  keyauth_credentials:
+  - key: uos-consumer-key
+  username: uos-user
+- keyauth_credentials:
+  - key: uos-user
+  username: uos-user2
+plugins:
+- config:
+    echo_downstream: false
+    generator: uuid
+    header_name: x-uos-correlation-id
+  enabled: true
+  name: correlation-id
+  ordering:
+    before:
+      access:
+      - oas-validation
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  tags:
+  - dev
+  - test
+- config:
+    content_type: application/json
+    custom_fields_by_lua: []
+    flush_timeout: 2
+    headers:
+      Authorization: Splunk 1fef7417-3fe0-46a1-801b-04164660a59b
+    http_endpoint: https://prd-p-s3ws6.splunkcloud.com:8088/services/collector/raw
+    keepalive: 60000
+    method: POST
+    queue:
+      initial_retry_delay: 0.01
+      max_batch_size: 10
+      max_bytes: null
+      max_coalescing_delay: 1
+      max_entries: 10000
+      max_retry_delay: 60
+      max_retry_time: 60
+    queue_size: null
+    retry_count: null
+    timeout: 10000
+  enabled: true
+  name: http-log
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  tags:
+  - dev
+- config:
+    allow:
+    - 49.249.17.98
+    deny: null
+    message: The service is currently unavailable.
+    status: null
+  enabled: false
+  name: ip-restriction
+  protocols:
+  - http
+  - https
+  - tcp
+  - tls
+  - grpc
+  - grpcs
+  tags:
+  - dev
+- config:
+    anonymous: null
+    hide_credentials: false
+    key_in_body: false
+    key_in_header: true
+    key_in_query: true
+    key_names:
+    - apikey
+    realm: null
+    run_on_preflight: true
+  enabled: false
+  name: key-auth
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  - ws
+  - wss
+  tags:
+  - dev
+- config:
+    day: null
+    error_code: 429
+    error_message: API rate limit exceeded
+    fault_tolerant: true
+    header_name: null
+    hide_client_headers: false
+    hour: null
+    limit_by: consumer
+    minute: null
+    month: null
+    path: null
+    policy: local
+    redis:
+      database: 0
+      host: null
+      password: null
+      port: 6379
+      server_name: null
+      ssl: false
+      ssl_verify: false
+      timeout: 2000
+      username: null
+    redis_database: 0
+    redis_host: null
+    redis_password: null
+    redis_port: 6379
+    redis_server_name: null
+    redis_ssl: false
+    redis_ssl_verify: false
+    redis_timeout: 2000
+    redis_username: null
+    second: 100
+    sync_rate: -1
+    year: null
+  enabled: true
+  name: rate-limiting
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  tags:
+  - dev
+- config:
+    allowed_payload_size: 100
+    require_content_length: false
+    size_unit: kilobytes
+  enabled: true
+  name: request-size-limiting
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  tags:
+  - dev
+services:
+- connect_timeout: 60000
+  enabled: true
+  host: uos-dev.auth.eu-west-2.amazoncognito.com
+  name: openid-svc
+  path: /oauth2/token
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - https_redirect_status_code: 426
+    name: openid-route
+    path_handling: v0
+    paths:
+    - /oauth/v1/token
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+    tags:
+    - kong-build
+  tags:
+  - kong-build
+  write_timeout: 60000
+- connect_timeout: 60000
+  enabled: true
+  host: integration.dev-api.shef.ac.uk
+  name: uos-microservices
+  path: /v1/students
+  plugins:
+  - config:
+      functions:
+      - |-
+        return function(status, body, headers)
+            local new_body = {}
+
+            if status == 400 then
+                new_body = {
+                    code = 10000,
+                    description = "Required fields are missing or invalid data specified in the request. Please refer the swagger specification for more details",
+                    source = "Middleware",
+                    message = body.message,
+                    type = "Validation"
+                }
+            elseif status == 401 then
+                new_body = {
+                    code = 10001,
+                    description = "Unauthorised request",
+                    source = "Middleware",
+                    message = body.message,
+                    type = "Validation"
+                }
+            elseif status == 403 then
+                new_body = {
+                    code = 10002,
+                    description = "Forbidden request",
+                    source = "Middleware",
+                    message = body.message,
+                    type = "Validation"
+                }
+            elseif status == 500 then
+                new_body = {
+                    code = 20000,
+                    description = "Internal Server Error",
+                    source = "Error",
+                    message = body.message,
+                    type = "Server error"
+                }
+          elseif status == 503 then
+                new_body = {
+                    code = 20000,
+                    description = "Internal Server Error",
+                    source = "Error",
+                    message = body.message,
+                    type = "System"
+                }
+            else
+                -- For any other status codes, return the original body
+                return status, body, headers
+            end
+
+            return status, new_body, headers
+        end
+      handle_unexpected: false
+      handle_unknown: false
+    enabled: true
+    name: exit-transformer
+    protocols:
+    - grpc
+    - grpcs
+    - http
+    - https
+    tags:
+    - dev
+  - config:
+      anonymous: null
+      hide_credentials: false
+      key_in_body: false
+      key_in_header: true
+      key_in_query: true
+      key_names:
+      - apikey
+      realm: null
+      run_on_preflight: true
+    enabled: true
+    name: key-auth
+    protocols:
+    - grpc
+    - grpcs
+    - http
+    - https
+    - ws
+    - wss
+  - config:
+      allowed_header_parameters: Host,Content-Type,User-Agent,Accept,Content-Length
+      api_spec: "openapi: 3.0.0\ninfo:\n  title: Student API\n  description: \"This
+        API will retrieve student information based on studentId, firstname, lastname
+        or studentType. The API supports pagination by using limit and offset query
+        param. To fetch next pages, the only param needed is nextPageId. Any other
+        params passed along with nextPageId will be ignored as nextPageId takes priority
+        \"\n  contact:\n    email: integrationteam@sheffield.ac.uk\n  version: 0.0.1\nservers:\n
+        \ - url: integration.dev-api.shef.ac.uk\ntags:\n- name: GetStudents\n  description:
+        Get Students Information\npaths:\n  /v1/students:\n    get:\n      tags:\n
+        \       - GetStudents\n      summary: Retrieve student information\n      description:
+        Returns a list of student information.\n      operationId: getStudents\n      parameters:\n
+        \       - $ref: '#/components/parameters/ContentTypeHeader'\n        - $ref:
+        '#/components/parameters/CorrelationIdHeader'\n        - $ref: '#/components/parameters/RequestIdHeader'\n
+        \       - $ref: '#/components/parameters/TimestampHeader'\n        - name:
+        studentId\n          in: query\n          description: unique student Id,
+        if passed a single record will be fetched\n          required: false\n          schema:\n
+        \           type: string\n            minLength: 1\n            maxLength:
+        100\n          example:  \"1001\" # change here\n        - name: firstname\n
+        \         in: query\n          description: Student firstname \n          required:
+        false\n          schema:\n            type: string\n            minLength:
+        1\n            maxLength: 200\n          example:  smith\n        - name:
+        lastname\n          in: query\n          description: Student lastname \n
+        \         required: false\n          schema:\n            type: string\n            minLength:
+        1\n            maxLength: 200\n          example:  smith\n        - name:
+        studentType\n          in: query\n          description: student registration
+        status \n          required: false\n          schema:\n            type: string\n
+        \           minLength: 1\n            maxLength: 200\n          example:  Attending\n
+        \       - name: limit\n          in: query\n          description: limit the
+        number of records\n          required: false\n          schema:\n            type:
+        integer\n            maximum: 500\n          example:  100\n        - name:
+        offset\n          in: query\n          description: offset the search result
+        with the offset value\n          required: false\n          schema:\n            type:
+        integer\n            maximum: 9999\n          example:  100\n        - name:
+        nextPageId\n          in: query\n          description: this param can only
+        be passed for second page and onwards only. This param will be returned in
+        response from previous call and if this param is not populated then is no
+        next page. Alternatively, limit and offset can be used at will.\n          required:
+        false\n          schema:\n            type: string\n            minLength:
+        1\n            maxLength: 500\n          example:  bGltaXQ9MTAwJm9mZnNldD0yMDA\n
+        \      \n\n      responses:\n        '200':\n          description: A list
+        of student information.\n          headers:\n            x-uos-request-id:\n
+        \             $ref: '#/components/headers/x-uos-request-id'\n            x-uos-correlation-id:\n
+        \             $ref: '#/components/headers/x-uos-correlation-id'\n            x-uos-timestamp:\n
+        \             $ref: '#/components/headers/x-uos-timestamp'\n          content:\n
+        \           application/json:\n              schema:\n                  type:
+        object\n                  properties:\n                    students:\n                      type:
+        array\n                      items:\n                        $ref: '#/components/schemas/Student'\n
+        \                   totalCountOfRecords:\n                      type: integer\n
+        \                     description: available number of records in the datastore.
+        This is not the number of records returned in this response. The consumer
+        can use limit and offset query param until this totalCountOfRecords is reached\n
+        \                     example: 1000\n                    nextPageId:\n                      type:
+        string\n                      description: available number of records in
+        the datastore. This is not the number of records returned in this response.
+        The consumer can use limit and offset query param until this totalCountOfRecords
+        is reached\n                      example: bGltaXQ9MTAwJm9mZnNldD0yMDA\n        '400':\n
+        \         description: Bad request\n          headers:\n            x-uos-request-id:\n
+        \             $ref: '#/components/headers/x-uos-request-id'\n            x-uos-correlation-id:\n
+        \             $ref: '#/components/headers/x-uos-correlation-id'\n            x-uos-timestamp:\n
+        \             $ref: '#/components/headers/x-uos-timestamp'\n          content:\n
+        \           application/json:\n              schema:\n                $ref:
+        '#/components/schemas/Error400'\n        '401':\n          description: Unauthorized\n
+        \         headers:\n            x-uos-request-id:\n              $ref: '#/components/headers/x-uos-request-id'\n
+        \           x-uos-correlation-id:\n              $ref: '#/components/headers/x-uos-correlation-id'\n
+        \           x-uos-timestamp:\n              $ref: '#/components/headers/x-uos-timestamp'\n
+        \         content:\n            application/json:\n              schema:\n
+        \               $ref: '#/components/schemas/Error401'\n        '403':\n          description:
+        Forbidden\n          headers:\n            x-uos-request-id:\n              $ref:
+        '#/components/headers/x-uos-request-id'\n            x-uos-correlation-id:\n
+        \             $ref: '#/components/headers/x-uos-correlation-id'\n            x-uos-timestamp:\n
+        \             $ref: '#/components/headers/x-uos-timestamp'\n          content:\n
+        \           application/json:\n              schema:\n                $ref:
+        '#/components/schemas/Error403'\n        '500':\n          description: Internal
+        Server Error\n          headers:\n            x-uos-request-id:\n              $ref:
+        '#/components/headers/x-uos-request-id'\n            x-uos-correlation-id:\n
+        \             $ref: '#/components/headers/x-uos-correlation-id'\n            x-uos-timestamp:\n
+        \             $ref: '#/components/headers/x-uos-timestamp'\n          content:\n
+        \           application/json:\n              schema:\n                $ref:
+        '#/components/schemas/Error500'\n      security:\n        - bearerAuth: ['uos/student-read',
+        'uos/student-read-all']\n        - apiKey: []\n\ncomponents:\n  schemas:\n
+        \   Student:\n      type: object\n      properties:\n        title:\n          type:
+        integer\n          description: The student's ID.\n          example: 123\n
+        \       forename:\n          type: string\n          description: The student's
+        forename.\n          example: \"Alice\"\n        lastname:\n          type:
+        string\n          description: The student's knownas name.\n          example:
+        \"John\"\n        universityEmail:\n          type: string\n          format:
+        email\n          description: The student's university email.\n          example:
+        \"alice.smith@university.edu\"\n        studentType:\n          type: string\n
+        \         description: The student's domain .\n          enum:\n            -
+        Attending\n            - Current\n          example: \"Attending\"\n    Error400:\n
+        \     type: object\n      required:\n        - code\n        - description\n
+        \       - message\n        - source\n        - type\n      properties:\n        code:\n
+        \         type: number\n          description: 5 digit error message code\n
+        \         example: 10000\n          enum:\n            - 10000\n        description:\n
+        \         type: string\n          description: Description for the 5 digit
+        \ message code.\n          example: Required fields are missing or invalid
+        data specified in the request. Please refer to the API documentation for more
+        details.\n        source:\n          type: string\n          description:
+        Source of the message\n          example: Middleware\n          enum:\n            -
+        Backend\n            - Middleware\n        message:\n          type: string\n
+        \         description: Any message for the consuming system for use in UI
+        or in the application\n          example: Invalid_JSON\n        type:\n          type:
+        string\n          description: Type of the message\n          example: Validation\n
+        \         enum:\n            - System\n            - Business\n            -
+        Validation\n    Error401:\n      type: object\n      required:\n        -
+        code\n        - description\n        - message\n        - source\n        -
+        type\n      properties:\n        code:\n          type: number\n          description:
+        5 digit error message code\n          example: 10001\n          enum:\n            -
+        10001\n        description:\n          type: string\n          description:
+        Description for the 5 digit  message code.\n          example: Invalid Authorization
+        Token or API Key Passed\n        source:\n          type: string\n          description:
+        Source of the message\n          example: Middleware\n          enum:\n            -
+        Backend\n            - Middleware\n        message:\n          type: string\n
+        \         description: Any message for the consuming system for use in UI
+        or in the application\n          example: Unauthorized\n        type:\n          type:
+        string\n          description: Type of the message\n          example: Validation\n
+        \         enum:\n            - System\n            - Business\n            -
+        Validation\n    Error403:\n      type: object\n      required:\n        -
+        code\n        - description\n        - message\n        - source\n        -
+        type\n      properties:\n        code:\n          type: number\n          description:
+        5 digit error message code\n          example: 10000 # change here \n          enum:\n
+        \           - 10000\n        description:\n          type: string\n          description:
+        Description for the 5 digit  message code.\n          example: Invalid Token
+        or API key\n        source:\n          type: string\n          description:
+        Source of the message\n          example: Middleware\n          enum:\n            -
+        Backend\n            - Middleware\n        message:\n          type: string\n
+        \         description: Any message for the consuming system for use in UI
+        or in the application\n          example: Forbidden \n        type:\n          type:
+        string\n          description: Type of the message\n          example: Validation\n
+        \         enum:\n            - System\n            - Business\n            -
+        Validation\n    Error500:\n      type: object\n      required:\n        -
+        code\n        - description\n        - message\n        - source\n        -
+        type\n      properties:\n        code:\n          type: number\n          description:
+        5 digit  message code\n          example: 20000\n          enum:\n            -
+        20000\n        description:\n          type: string\n          description:
+        Description for the 5 digit  message code.\n          example: Internal Server
+        Error\n        source:\n          type: string\n          description: Source
+        of the message\n          example: Backend\n          enum:\n            -
+        Backend\n            - Middleware\n        message:\n          type: string\n
+        \         description: Any message for the consuming system for use in UI
+        or in the application\n        type:\n          type: string\n          description:
+        Type of the message\n          example: System\n          enum:\n            -
+        System\n            - Business\n            - Validation\n  headers:\n    x-uos-timestamp:\n
+        \       description: Timestamp for when the API response was made.\n        required:
+        true\n        schema:\n         type: string\n         format: date-time\n
+        \       example: 2023-10-26T15:22:10Z\n    x-uos-correlation-id:\n        description:
+        A unique identifier used by consumers or within the microservices layer in
+        a business process journey.\n        required: false\n        schema:\n          type:
+        string\n          minLength: 1            \n          maxLength: 100\n\n    x-uos-request-id:\n
+        \     description: A unique identifier for the API request. \n      required:
+        true\n      schema:\n        type: string\n        minLength: 1            \n
+        \       maxLength: 100       \n  parameters:\n    ContentTypeHeader:\n      name:
+        Content-Type\n      in: header\n      required: true\n      schema:\n        type:
+        string\n        default: application/json\n        enum:\n          - application/json\n
+        \         - application/xml\n    CorrelationIdHeader:\n      name: x-uos-correlation-id\n
+        \     in: header\n      required: false\n      schema:\n        type: string\n
+        \       minLength: 1            \n        maxLength: 300\n        description:
+        A unique identifier used by consumers or within the microservices layer in
+        a business process journey.\n        example: e29b-41d4-a716-44665544000\n
+        \   RequestIdHeader:\n      name: x-uos-request-id\n      in: header\n      required:
+        true\n      schema:\n        type: string\n        minLength: 5            \n
+        \       maxLength: 300\n        description: A unique identifier for the API
+        request.\n        example: 550e8400-e29b-41d4-a716-446655440000\n    TimestampHeader:\n
+        \     name: x-uos-timestamp\n      in: header\n      required: true\n      schema:\n
+        \       type: string\n        description: Timestamp for when the API request
+        was made.\n        format: date-time\n        example: 2023-10-26T15:22:10Z\n
+        \       \n  securitySchemes:\n    bearerAuth:\n      type: oauth2\n      flows:\n
+        \       clientCredentials:\n          tokenUrl: https://example.com/oauth2/token\n
+        \         scopes:\n            uos/student-read: Read student information\n
+        \           uos/student-read-all: Read all student information\n    apiKey:\n
+        \     type: apiKey\n      in: header\n      name: x-api-key"
+      api_spec_encoded: true
+      header_parameter_check: false
+      include_base_path: false
+      notify_only_request_validation_failure: false
+      notify_only_response_body_validation_failure: false
+      query_parameter_check: false
+      validate_request_body: true
+      validate_request_header_params: true
+      validate_request_query_params: true
+      validate_request_uri_params: true
+      validate_response_body: false
+      verbose_response: true
+    enabled: true
+    name: oas-validation
+    protocols:
+    - http
+    - https
+    tags:
+    - dev
+  - config:
+      anonymous: null
+      audience: null
+      audience_claim:
+      - aud
+      audience_required: null
+      auth_methods:
+      - bearer
+      authenticated_groups_claim: null
+      authorization_cookie_domain: null
+      authorization_cookie_http_only: true
+      authorization_cookie_name: authorization
+      authorization_cookie_path: /
+      authorization_cookie_same_site: Default
+      authorization_cookie_secure: null
+      authorization_endpoint: null
+      authorization_query_args_client: null
+      authorization_query_args_names: null
+      authorization_query_args_values: null
+      authorization_rolling_timeout: 600
+      bearer_token_cookie_name: null
+      bearer_token_param_type:
+      - header
+      - query
+      - body
+      by_username_ignore_case: false
+      cache_introspection: true
+      cache_token_exchange: true
+      cache_tokens: true
+      cache_tokens_salt: dC1MclTHUAJ8SGzPH90fEMAFN4xFZ9yj
+      cache_ttl: 3600
+      cache_ttl_max: null
+      cache_ttl_min: null
+      cache_ttl_neg: null
+      cache_ttl_resurrect: null
+      cache_user_info: true
+      client_alg: null
+      client_arg: client_id
+      client_auth: null
+      client_credentials_param_type:
+      - header
+      - query
+      - body
+      client_id: []
+      client_jwk: null
+      client_secret: []
+      consumer_by:
+      - username
+      - custom_id
+      consumer_claim: null
+      consumer_optional: false
+      credential_claim:
+      - sub
+      disable_session: null
+      discovery_headers_names: null
+      discovery_headers_values: null
+      display_errors: false
+      domains: null
+      downstream_access_token_header: null
+      downstream_access_token_jwk_header: null
+      downstream_headers_claims: null
+      downstream_headers_names: null
+      downstream_id_token_header: null
+      downstream_id_token_jwk_header: null
+      downstream_introspection_header: null
+      downstream_introspection_jwt_header: null
+      downstream_refresh_token_header: null
+      downstream_session_id_header: null
+      downstream_user_info_header: null
+      downstream_user_info_jwt_header: null
+      enable_hs_signatures: false
+      end_session_endpoint: null
+      expose_error_code: true
+      extra_jwks_uris: null
+      forbidden_destroy_session: true
+      forbidden_error_message: Forbidden
+      forbidden_redirect_uri: null
+      groups_claim:
+      - groups
+      groups_required: null
+      hide_credentials: false
+      http_proxy: null
+      http_proxy_authorization: null
+      http_version: 1.1
+      https_proxy: null
+      https_proxy_authorization: null
+      id_token_param_name: null
+      id_token_param_type:
+      - header
+      - query
+      - body
+      ignore_signature: []
+      introspect_jwt_tokens: false
+      introspection_accept: application/json
+      introspection_check_active: true
+      introspection_endpoint: null
+      introspection_endpoint_auth_method: null
+      introspection_headers_client: null
+      introspection_headers_names: null
+      introspection_headers_values: null
+      introspection_hint: access_token
+      introspection_post_args_client: null
+      introspection_post_args_names: null
+      introspection_post_args_values: null
+      introspection_token_param_name: token
+      issuer: https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_pmhLhUYdx
+      issuers_allowed: null
+      jwt_session_claim: sid
+      jwt_session_cookie: null
+      keepalive: true
+      leeway: 0
+      login_action: upstream
+      login_methods:
+      - authorization_code
+      login_redirect_mode: fragment
+      login_redirect_uri: null
+      login_tokens:
+      - id_token
+      logout_methods:
+      - POST
+      - DELETE
+      logout_post_arg: null
+      logout_query_arg: null
+      logout_redirect_uri: null
+      logout_revoke: false
+      logout_revoke_access_token: true
+      logout_revoke_refresh_token: true
+      logout_uri_suffix: null
+      max_age: null
+      mtls_introspection_endpoint: null
+      mtls_revocation_endpoint: null
+      mtls_token_endpoint: null
+      no_proxy: null
+      password_param_type:
+      - header
+      - query
+      - body
+      preserve_query_args: false
+      proof_of_possession_auth_methods_validation: true
+      proof_of_possession_mtls: "off"
+      pushed_authorization_request_endpoint: null
+      pushed_authorization_request_endpoint_auth_method: null
+      redirect_uri: null
+      rediscovery_lifetime: 30
+      refresh_token_param_name: null
+      refresh_token_param_type:
+      - header
+      - query
+      - body
+      refresh_tokens: true
+      require_proof_key_for_code_exchange: null
+      require_pushed_authorization_requests: null
+      resolve_distributed_claims: false
+      response_mode: query
+      response_type:
+      - code
+      reverify: false
+      revocation_endpoint: null
+      revocation_endpoint_auth_method: null
+      revocation_token_param_name: token
+      roles_claim:
+      - roles
+      roles_required: null
+      run_on_preflight: true
+      scopes:
+      - openid
+      scopes_claim:
+      - scope
+      scopes_required: null
+      search_user_info: false
+      session_absolute_timeout: 86400
+      session_audience: default
+      session_compressor: none
+      session_cookie_domain: null
+      session_cookie_http_only: true
+      session_cookie_maxsize: 4000
+      session_cookie_name: session
+      session_cookie_path: /
+      session_cookie_renew: 600
+      session_cookie_same_site: Lax
+      session_cookie_secure: null
+      session_enforce_same_subject: false
+      session_hash_storage_key: false
+      session_hash_subject: false
+      session_idling_timeout: 900
+      session_memcached_host: 127.0.0.1
+      session_memcached_port: 11211
+      session_memcached_prefix: null
+      session_memcached_socket: null
+      session_redis_cluster_max_redirections: null
+      session_redis_cluster_nodes: null
+      session_redis_connect_timeout: null
+      session_redis_host: 127.0.0.1
+      session_redis_password: null
+      session_redis_port: 6379
+      session_redis_prefix: null
+      session_redis_read_timeout: null
+      session_redis_send_timeout: null
+      session_redis_server_name: null
+      session_redis_socket: null
+      session_redis_ssl: false
+      session_redis_ssl_verify: false
+      session_redis_username: null
+      session_remember: false
+      session_remember_absolute_timeout: 2592000
+      session_remember_cookie_name: remember
+      session_remember_rolling_timeout: 604800
+      session_request_headers: null
+      session_response_headers: null
+      session_rolling_timeout: 3600
+      session_secret: null
+      session_storage: cookie
+      session_store_metadata: false
+      session_strategy: default
+      ssl_verify: false
+      timeout: 10000
+      tls_client_auth_cert_id: null
+      tls_client_auth_ssl_verify: true
+      token_cache_key_include_scope: false
+      token_endpoint: null
+      token_endpoint_auth_method: null
+      token_exchange_endpoint: null
+      token_headers_client: null
+      token_headers_grants: null
+      token_headers_names: null
+      token_headers_prefix: null
+      token_headers_replay: null
+      token_headers_values: null
+      token_post_args_client: null
+      token_post_args_names: null
+      token_post_args_values: null
+      unauthorized_destroy_session: true
+      unauthorized_error_message: Unauthorized
+      unauthorized_redirect_uri: null
+      unexpected_redirect_uri: null
+      upstream_access_token_header: authorization:bearer
+      upstream_access_token_jwk_header: null
+      upstream_headers_claims: null
+      upstream_headers_names: null
+      upstream_id_token_header: null
+      upstream_id_token_jwk_header: null
+      upstream_introspection_header: null
+      upstream_introspection_jwt_header: null
+      upstream_refresh_token_header: null
+      upstream_session_id_header: null
+      upstream_user_info_header: null
+      upstream_user_info_jwt_header: null
+      userinfo_accept: application/json
+      userinfo_endpoint: null
+      userinfo_headers_client: null
+      userinfo_headers_names: null
+      userinfo_headers_values: null
+      userinfo_query_args_client: null
+      userinfo_query_args_names: null
+      userinfo_query_args_values: null
+      using_pseudo_issuer: false
+      verify_claims: true
+      verify_nonce: true
+      verify_parameters: false
+      verify_signature: true
+    enabled: true
+    name: openid-connect
+    protocols:
+    - grpc
+    - grpcs
+    - http
+    - https
+    tags:
+    - dev
+  - config:
+      day: null
+      error_code: 429
+      error_message: API rate limit exceeded
+      fault_tolerant: true
+      header_name: null
+      hide_client_headers: false
+      hour: null
+      limit_by: consumer
+      minute: null
+      month: null
+      path: null
+      policy: local
+      redis:
+        database: 0
+        host: null
+        password: null
+        port: 6379
+        server_name: null
+        ssl: false
+        ssl_verify: false
+        timeout: 2000
+        username: null
+      redis_database: 0
+      redis_host: null
+      redis_password: null
+      redis_port: 6379
+      redis_server_name: null
+      redis_ssl: false
+      redis_ssl_verify: false
+      redis_timeout: 2000
+      redis_username: null
+      second: 10
+      sync_rate: -1
+      year: null
+    enabled: true
+    name: rate-limiting
+    protocols:
+    - grpc
+    - grpcs
+    - http
+    - https
+    tags:
+    - dev
+  - config:
+      allowed_payload_size: 10
+      require_content_length: false
+      size_unit: kilobytes
+    enabled: true
+    name: request-size-limiting
+    protocols:
+    - grpc
+    - grpcs
+    - http
+    - https
+    tags:
+    - dev
+  - config:
+      add:
+        body: []
+        headers:
+        - 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ='
+        querystring: []
+      append:
+        body: []
+        headers: []
+        querystring: []
+      http_method: null
+      remove:
+        body: []
+        headers: []
+        querystring: []
+      rename:
+        body: []
+        headers: []
+        querystring: []
+      replace:
+        body: []
+        headers:
+        - 'Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ='
+        querystring: []
+        uri: null
+    enabled: true
+    name: request-transformer
+    protocols:
+    - grpc
+    - grpcs
+    - http
+    - https
+    tags:
+    - dev
+  port: 80
+  protocol: http
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - https_redirect_status_code: 426
+    methods:
+    - GET
+    name: student-api_getstudents
+    path_handling: v0
+    paths:
+    - /v1/students
+    plugins:
+    - config:
+        allow:
+        - UoS-group
+        deny: null
+        hide_groups_header: false
+        include_consumer_groups: false
+      enabled: true
+      name: acl
+      protocols:
+      - grpc
+      - grpcs
+      - http
+      - https
+      tags:
+      - dev
+    preserve_host: false
+    protocols:
+    - http
+    regex_priority: 200
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+    tags:
+    - dev
+  tags:
+  - dev
+  - test
+  write_timeout: 60000
+upstreams:
+- algorithm: round-robin
+  hash_fallback: none
+  hash_on: none
+  hash_on_cookie_path: /
+  healthchecks:
+    active:
+      concurrency: 10
+      healthy:
+        http_statuses:
+        - 200
+        - 302
+        interval: 0
+        successes: 0
+      http_path: /
+      https_verify_certificate: true
+      timeout: 1
+      type: http
+      unhealthy:
+        http_failures: 0
+        http_statuses:
+        - 429
+        - 404
+        - 500
+        - 501
+        - 502
+        - 503
+        - 504
+        - 505
+        interval: 0
+        tcp_failures: 0
+        timeouts: 0
+    passive:
+      healthy:
+        http_statuses:
+        - 200
+        - 201
+        - 202
+        - 203
+        - 204
+        - 205
+        - 206
+        - 207
+        - 208
+        - 226
+        - 300
+        - 301
+        - 302
+        - 303
+        - 304
+        - 305
+        - 306
+        - 307
+        - 308
+        successes: 0
+      type: http
+      unhealthy:
+        http_failures: 0
+        http_statuses:
+        - 429
+        - 500
+        - 503
+        tcp_failures: 0
+        timeouts: 0
+    threshold: 0
+  name: student-api.upstream
+  slots: 10000
+  tags:
+  - dev
+  targets:
+  - tags:
+    - dev
+    target: api.dev.example.com:443
+    weight: 100
+  - tags:
+    - dev
+    target: api.test.example.com:443
+    weight: 100
+  use_srv_name: false
